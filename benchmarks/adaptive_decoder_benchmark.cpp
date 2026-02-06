@@ -16,15 +16,21 @@ This benchmarks thus only shows the read latency of the compressed data.
 void runBenchmark(const std::string &name, comp::Decoder &decoder, int count)
 {
     double out{};
+    double checksum{0.0}; // to force the cpu to do work so it doesn't skip loops.
     auto start = std::chrono::high_resolution_clock::now();
 
     for(int i{0}; i < count; ++i)
     {
-        decoder.next(out);
+        if(decoder.next(out))
+        {
+            checksum += out; //Force the compiler to keep this call.
+        }
     }
 
     auto end = std::chrono::high_resolution_clock::now();
     auto time_len = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
+
+    if(checksum == 42.0001) { std::cout << " "; }
 
     double throughput = (count / (time_len / 1e9)) / 1e6;
     std::cout << name << " throughtput: " << throughput << " M ticks/sec.\n";
@@ -44,8 +50,8 @@ int main()
     }
 
     //Prep buffer
-    comp::Encoder encoder1(TICKS * 1024); //Allocating extra space to avoid accidental overflow
-    comp::AdaptiveEncoder encoder2(TICKS * 1024);
+    comp::Encoder encoder1(TICKS * 32); //Allocating extra space to avoid accidental overflow
+    comp::AdaptiveEncoder encoder2(TICKS * 32);
 
     for(const auto &d : data)
     {
