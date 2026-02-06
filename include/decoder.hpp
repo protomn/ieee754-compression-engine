@@ -15,9 +15,14 @@ namespace comp
             Decoder(const uint64_t *data, size_t wordSize)
                 : reader_(data, wordSize),
                   prev_val(0),
-                  first_val(true) { }
+                  prev_lzs(0),
+                  prev_len(0),
+                  first_val(true),
+                  first_del(true) { }
 
-            bool next(double &out)
+            virtual ~Decoder() = default;
+
+            virtual bool next(double &out)
             {
                 //Handle the first_val sotred as raw 64-bits
                 if(first_val)
@@ -26,7 +31,7 @@ namespace comp
                     //If the stream is empty, the reader might read 0
 
                     prev_val = u64_val;
-                    out = comp::to_double(u64_val);
+                    out = to_double(u64_val);
                     first_val = false;
                     return true;
                 }
@@ -36,7 +41,7 @@ namespace comp
                 if(control == 0)
                 {
                     //If del results in 0, value is identical to the previous
-                    out = comp::to_double(prev_val);
+                    out = to_double(prev_val);
                     return true;
                 }
                 else
@@ -60,16 +65,27 @@ namespace comp
                     //Reconstruct the original bit pattern
                     uint64_t reconstructed = del_rev ^ prev_val;
 
-                    out = comp::to_double(reconstructed);
+                    out = to_double(reconstructed);
                     prev_val = reconstructed;
                     return true;
                 }
             }
 
-        private:
+        protected:
 
             bitReader reader_;
             uint64_t prev_val;
+            int prev_lzs;
+            int prev_len;
             bool first_val;
+            bool first_del;
+    };
+
+    class AdaptiveDecoder : public Decoder
+    {
+        public:
+
+            using Decoder::Decoder;
+            bool next(double &out) override;
     };
 }
