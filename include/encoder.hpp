@@ -98,10 +98,10 @@ namespace comp
 
             bitWriter writer_;
             uint64_t prev_val;
-            bool first_val;
-            bool first_del; //track if it's the first non-zero del
             int prev_lzs; //track previous leading zeros
             int prev_len; //track previous meaningful length
+            bool first_val;
+            bool first_del; //track if it's the first non-zero del
     };
 
     class AdaptiveEncoder : public Encoder
@@ -110,5 +110,56 @@ namespace comp
 
             using Encoder::Encoder; //Inherit the constructor
             void append(double val) override;
+    };
+
+    class FastEncoder : public Encoder
+    {
+        public:
+            
+            using Encoder::Encoder;
+
+            //using a non-vitual, always-inlined function for fastest execution
+            __attribute__((always_inline))
+            inline void fastAppend(double val)
+            {
+                uint64_t u64_val = to_uint64(val);
+
+                if(__builtin_expect(first_val, 0))
+                {
+                    writer_.write_bits(u64_val, 64);
+                    prev_val = u64_val;
+                    first_val = false;
+                    return;
+                }
+
+                uint64_t del = u64_val ^ prev_val;
+
+                if(del == 0)
+                {
+                    writer_.write_bits(0, 1);
+                }
+                else
+                {
+                    writer_.write_bits(1, 1);
+
+                    //Calculate leading/trailing zeros using hardware instructions
+                    int lzs = __builtin_clzll(del);
+                    int tzs = __builtin_ctzll(del);
+
+                    //Clamp lzs to 31 bits
+                    if(lzs >= 32)
+                    {
+                        lzs = 31;
+                    }
+
+                    int len = 64 - lzs - tzs;
+
+                    uint64_t header = (1ULL << 11) | (static_cast<uint64_t>(lzs) << 6) | (len & 0x3F);
+                    writer_.write_bits(header, 12);
+                    writer_.write_bits(del >> tzs, len);
+
+                    prev_val = u64_val;
+                }
+            }
     };
 }
