@@ -68,6 +68,9 @@ namespace comp
                     writer_.write_bits(lzs, 5);
                     writer_.write_bits(len, 6);
 
+                    uint64_t meaningful_bits = (del >> tzs) & ((1ULL << len) - 1);
+                    writer_.write_bits(meaningful_bits, len);
+
                     prev_val = u64_val;
                 }
             }
