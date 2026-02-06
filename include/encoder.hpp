@@ -46,28 +46,30 @@ namespace comp
                 {
                     writer_.write_bits(0, 1);
                 }
-                
-                writer_.write_bits(1, 1);
-
-                int lzs = count_lzs(del);
-                int tzs = count_tzs(del);
-
-                if(lzs >= 32)
+                else
                 {
-                    lzs = 31;
+                    writer_.write_bits(1, 1);
+
+                    int lzs = count_lzs(del);
+                    int tzs = count_tzs(del);
+
+                    if(lzs >= 32)
+                    {
+                        lzs = 31;
+                    }
+
+                    int len{64 - lzs - tzs};
+
+                    if(len <= 0)
+                    {
+                        len = 1;
+                    }
+
+                    writer_.write_bits(lzs, 5);
+                    writer_.write_bits(len, 6);
+
+                    prev_val = u64_val;
                 }
-
-                int len{64 - lzs - tzs};
-
-                if(len <= 0)
-                {
-                    len = 1;
-                }
-
-                writer_.write_bits(lzs, 5);
-                writer_.write_bits(len, 6);
-
-                prev_val = u64_val;
             }
 
             void fin()
