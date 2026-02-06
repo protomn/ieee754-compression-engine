@@ -134,28 +134,26 @@ namespace comp
             {
                 scratch_ = 0;
                 bits_ = 0;
+                capacity_words_ = buffer_.capacity();
             }
 
+            __attribute__((always_inline))
             inline void write_bits(uint64_t value, int count)
             {
-                assert(count <= 64); //to be removed in final build
-
-                value &= (count == 64) ? ~0ULL : ((1ULL << count) - 1);
+                if(__builtin_expect(count < 64, 1))
+                {
+                    value &= ((1ULL << count) - 1);
+                }
 
                 scratch_ |= (value << bits_);
                 bits_ += count;
 
-                if(bits_ >= 64)
+                if(__builtin_expect(bits_ >= 64, 0))
                 {
-                    if(buffer_.size() >= buffer_.capacity())
-                    {
-                        throw std::runtime_error("Buffer Overflow: Pre-allocate more memory.");
-                    }
-
+            
                     buffer_.unsafe_push(scratch_);
-
                     bits_ -= 64;
-                    scratch_ = (bits_ > 0) ? (value >> (count - bits_)) : 0;
+                    scratch_ = value >> (count - bits_);
                 }
             }
 
@@ -190,6 +188,7 @@ namespace comp
             linBuffer buffer_;
             uint64_t scratch_;
             int bits_;
+            size_t capacity_words_;
     };
 
     class bitReader
