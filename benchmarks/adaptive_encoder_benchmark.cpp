@@ -50,11 +50,11 @@ int main()
     }
 
     //Benchmarking basic encoder
-    comp::Encoder encoder1(TICKS * 1024);
+    comp::Encoder encoder1(TICKS * 64);
     runBenchmark("Basic Encoder", encoder1, data);
 
     //Benchmarking adaptive encoder
-    comp::AdaptiveEncoder encoder2(TICKS * 1024);
+    comp::AdaptiveEncoder encoder2(TICKS * 64);
     runBenchmark("Adaptive Encoder", encoder2, data);
 
     return 0;
