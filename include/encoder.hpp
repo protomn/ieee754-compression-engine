@@ -25,9 +25,10 @@ namespace comp
         public:
 
             explicit Encoder(size_t buffer_size_)
-                : writer_(buffer_size_), prev_val(0), first_val(true) { }
+                : writer_(buffer_size_), prev_val(0),
+                  prev_lzs(31), prev_len(64), first_val(true), first_del(true) { }
 
-            void append(double val)
+            virtual void append(double val)
             {
                 uint64_t u64_val = to_uint64(val);
 
@@ -93,10 +94,21 @@ namespace comp
                 return writer_.get_buffer();
             }
 
-        private:
+        protected:
 
             bitWriter writer_;
             uint64_t prev_val;
             bool first_val;
+            bool first_del; //track if it's the first non-zero del
+            int prev_lzs; //track previous leading zeros
+            int prev_len; //track previous meaningful length
+    };
+
+    class AdaptiveEncoder : public Encoder
+    {
+        public:
+
+            using Encoder::Encoder; //Inherit the constructor
+            void append(double val) override;
     };
 }
