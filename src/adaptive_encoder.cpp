@@ -11,6 +11,16 @@ namespace comp
     void AdaptiveEncoder::append(double val)
     {
         uint64_t u64_val = to_uint64(val);
+
+        //Handle the first_val as raw 64 bits   
+        if(first_val)
+        {
+            writer_.write_bits(u64_val, 64);
+            prev_val = u64_val;
+            first_val = false;
+            return;
+        }
+
         uint64_t del = u64_val ^ prev_val;
 
         if(del == 0)
@@ -32,6 +42,11 @@ namespace comp
 
             int len = 64 - lzs - tzs;
 
+            if(len <= 0)
+            {
+                len = 1;
+            }
+
             // Adaptive check: is the previous window reusable?
             if(!first_del && lzs >= prev_lzs && (lzs + len) <= (prev_lzs + prev_len))
             {
@@ -48,7 +63,7 @@ namespace comp
                 writer_.write_bits(lzs, 5);
                 writer_.write_bits(len, 6);
 
-                uint64_t meaningful_bits = del >> tzs;
+                uint64_t meaningful_bits = (del >> tzs) & ((1ULL << len) - 1);
                 writer_.write_bits(meaningful_bits, len);
 
                 //Update state for next data point
