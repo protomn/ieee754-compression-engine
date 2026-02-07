@@ -88,4 +88,47 @@ namespace comp
             using Decoder::Decoder;
             bool next(double &out) override;
     };
+
+    class FastDecoder : public Decoder
+    {
+        public:
+
+            using Decoder::Decoder;
+
+            __attribute__((always_inline))
+            inline bool fastNxt(double &out)
+            {
+                if(__builtin_expect(first_val, 0))
+                {
+                    uint64_t u64_val = reader_.read_bits(64);
+                    prev_val = u64_val;
+                    out = to_double(u64_val);
+                    first_val = false;
+                    return true;
+                }
+
+                uint64_t control = reader_.read_bits(1);
+
+                if(__builtin_expect(control == 0, 1)) //Check control bit
+                {
+                    out = to_double(prev_val);
+                    return true;
+                }
+                
+                //Value changed
+                uint64_t header = reader_.read_bits(11);
+                int lead = (int)((header >> 6) & 0x1F);
+                int len = (int)(header & 0x3F);
+
+                uint64_t meaningful_bits = reader_.read_bits(len);
+                int trail = 64 - lead - len;
+
+                uint64_t reconstructed = (meaningful_bits << trail) ^ prev_val;
+
+                out = to_double(reconstructed);
+                prev_val = reconstructed;
+                return true;
+            
+            }
+    };
 }
