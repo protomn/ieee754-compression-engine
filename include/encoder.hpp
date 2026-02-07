@@ -154,8 +154,8 @@ namespace comp
 
                     int len = 64 - lzs - tzs;
 
-                    uint64_t header = (1ULL << 11) | (static_cast<uint64_t>(lzs) << 6) | (len & 0x3F);
-                    writer_.write_bits(header, 12);
+                    uint64_t header = (static_cast<uint64_t>(lzs) << 6) | (len & 0x3F);
+                    writer_.write_bits(header, 11);
                     writer_.write_bits(del >> tzs, len);
 
                     prev_val = u64_val;
