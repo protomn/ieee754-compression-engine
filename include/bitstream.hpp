@@ -153,7 +153,14 @@ namespace comp
             
                     buffer_.unsafe_push(scratch_);
                     bits_ -= 64;
-                    scratch_ = value >> (count - bits_);
+                    if(bits_ > 0)
+                    {
+                        scratch_ = value >> (count - bits_);
+                    }
+                    else
+                    {
+                        scratch_ = 0;
+                    }
                 }
             }
 
