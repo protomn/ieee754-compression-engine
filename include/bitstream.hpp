@@ -132,9 +132,12 @@ namespace comp
 
             explicit bitWriter(size_t capacity) : buffer_((capacity + 63)/64)
             {
+                /*
+                Invariant: Caller must pre-allocate sufficient memory to the buffer.
+                No runtime bounds checking for performance purposes.
+                */
                 scratch_ = 0;
                 bits_ = 0;
-                capacity_words_ = buffer_.capacity();
             }
 
             __attribute__((always_inline))
@@ -195,7 +198,6 @@ namespace comp
             linBuffer buffer_;
             uint64_t scratch_;
             int bits_;
-            size_t capacity_words_;
     };
 
     class bitReader
