@@ -26,7 +26,7 @@ void runFastDecBench(const std::string &title, comp::FastDecoder &dec, int cnt)
 
     auto time_len = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
     
-    double throughput = (cnt / (time_len / 1e9)) / 1e6;
+    double throughput = (cnt / (time_len / 1e6)) / 1e6;
     std::cout << title << " throughtput: " << throughput << " M ticks/sec.\n";
     std::cout << "Checksum: " << checksum << '\n';
 }

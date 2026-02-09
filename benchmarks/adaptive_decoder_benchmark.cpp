@@ -32,7 +32,7 @@ void runBenchmark(const std::string &name, comp::Decoder &decoder, int count)
 
     if(checksum == 42.0001) { std::cout << " "; }
 
-    double throughput = (count / (time_len / 1e9)) / 1e6;
+    double throughput = (count / (time_len / 1e6)) / 1e6;
     std::cout << name << " throughtput: " << throughput << " M ticks/sec.\n";
 }   
 
