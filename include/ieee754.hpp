@@ -45,6 +45,8 @@ namespace comp
    /*
    The function below breaks down the double into it's bitwise parts
    as defined in struct DoubleParts
+
+   Reserved purely for debugging.
    */
 
    inline DoubleParts breakParts(double v)
