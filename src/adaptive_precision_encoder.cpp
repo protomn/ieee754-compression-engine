@@ -131,7 +131,7 @@ namespace comp
 
         //Compute av precision
         int sum{0};
-        int min_p{0};
+        int min_p{64};
         int max_p{0};
 
         for(int i{0}; i < hist_count; ++i)
