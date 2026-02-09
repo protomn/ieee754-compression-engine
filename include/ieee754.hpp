@@ -65,12 +65,7 @@ namespace comp
 
    [[nodiscard]] inline int count_lzs(uint64_t val) noexcept
    {
-        if(val == 0)
-        {
-            return 64;
-        }
-
-        return std::countl_zero(val);
+        return std::countl_zero(val); //Zero check not needed, std::countl_zero(0) already returns 64.
    }
 
    [[nodiscard]] inline int count_tzs(uint64_t val) noexcept
