@@ -34,8 +34,24 @@ namespace comp
     {
         public:
 
-            static constexpr size_t MAX_SIZE = 64; //Aligned to 64 bytes (typical L1 cache line width)
+            /*
+            64-byte alignment for L1 cache line optimization.
+            On a typical x86-64 architecture, the L1 cache is 64-bytes.
+            Buffer is aligned to the cache to boundaries to prevent 
+            false sharing and maximize througput.
+            */
+            static constexpr size_t MAX_SIZE = 64;
 
+
+            /*
+            Constructor to construct a cache-aligned linear buffer.
+            Parameter cap is the number of uint64_t elements.
+
+            Responsible for allocating memory to 64-byte boundaries for cache efficiency.
+            No zero-initialization for performance (hot-path in compression).
+
+            throws std::bad_alloc if allocation fails.
+            */
             explicit linBuffer(size_t cap) : size_(0), capacity_(cap)
             {
                 //Calc required bytes
@@ -79,7 +95,11 @@ namespace comp
                 dup.capacity_ = 0;
             }
 
-            //HOT PATH: unsafe push (caller guarantees capacity)
+            /*
+            HOT PATH: push without any bounds checking
+            Caller must guarantee sufficient capacity before calling.
+            Used for max performace.
+            */
             inline void unsafe_push(uint64_t val) __attribute__((always_inline))
             {
                 data_[size_++] = val;
@@ -130,6 +150,16 @@ namespace comp
     {
         public:
 
+            /*
+            Constructs a bitWriter with specified capacity.
+            Parameter capacity is the maximum number of BITS to be writen (not bytes!)
+
+            Caller must ensure capacity is sufficient for all writes.
+            No bounds checking in write_bits() hot path for performance.
+            Insufficient allocation will cause buffer overflow leading to UB.
+
+            For safe allocation keep capacity >= no_of_elements * sizeof(type)
+            */
             explicit bitWriter(size_t capacity) : buffer_((capacity + 63)/64)
             {
                 /*
@@ -140,22 +170,37 @@ namespace comp
                 bits_ = 0;
             }
 
+            /*
+            Writes variable length bits to the buffer.
+            value: the value to be written
+            count: number of bits to be written (bits in value) [0 - 64]
+
+            Bits are packed into 64-bit words using little-endian order.
+            When the scratch buffer fills, it is flushed to the main buffer.
+
+            Inlined, no branch checking - caller guarantees capacity.
+            */
             __attribute__((always_inline))
             inline void write_bits(uint64_t value, int count)
             {
+                //Mask to count bits - handles count = 64 edge case
                 if(__builtin_expect(count < 64, 1))
                 {
                     value &= ((1ULL << count) - 1);
                 }
 
+                //Write bits to the scratch buffer
                 scratch_ |= (value << bits_);
                 bits_ += count;
 
+                //Flush when scratch is full
                 if(__builtin_expect(bits_ >= 64, 0))
                 {
             
                     buffer_.unsafe_push(scratch_);
                     bits_ -= 64;
+
+                    //Handle overflow bits that didn't fit
                     if(bits_ > 0)
                     {
                         scratch_ = value >> (count - bits_);
@@ -167,6 +212,11 @@ namespace comp
                 }
             }
 
+            /*
+            Flush remaining bits to the buffer.
+            To be called after all writes are complete to ensure data integrity.
+            Pads final word with zeros if partial/incomplete.
+            */
             void flush()
             {
                 if(bits_ > 0)
