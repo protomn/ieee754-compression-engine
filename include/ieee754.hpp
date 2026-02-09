@@ -70,11 +70,14 @@ namespace comp
 
    [[nodiscard]] inline int count_tzs(uint64_t val) noexcept
    {
-        if(val == 0)
-        {
-            return 64;
-        }
+        /*
+        Hardware accelerated trailing zeros count
 
+        While std::countr_zero() handles 0 correctly,
+        if refactoring to use __builtin_ctzll for performance, 
+        keep in mind __builtin_ctzll(0) is UB!
+        All callers check for 0 before calling.
+        */
         return std::countr_zero(val);
    }
 
