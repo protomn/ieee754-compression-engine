@@ -65,6 +65,10 @@ namespace comp
                     {
                         len = 1;
                     }
+                    if(len > 63)
+                    {
+                        len = 63; //Clamping to 6-bit max;
+                    }
 
                     writer_.write_bits(lzs, 5);
                     writer_.write_bits(len, 6);
@@ -153,6 +157,15 @@ namespace comp
                     }
 
                     int len = 64 - lzs - tzs;
+
+                    if(len <= 0)
+                    {
+                        len = 1;
+                    }
+                    if(len > 63)
+                    {
+                        len = 63; // Clamping to 6-bit max
+                    }
 
                     uint64_t header = (static_cast<uint64_t>(lzs) << 6) | (len & 0x3F);
                     writer_.write_bits(header, 11);

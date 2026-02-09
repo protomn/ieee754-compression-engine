@@ -71,6 +71,10 @@ namespace comp
                     {
                         len = 1;
                     }
+                    if(len > 63)
+                    {
+                        len = 63;
+                    }
 
                     //Check if the same precision level can be reused
                     if(lzs >= prev_lzs && len <= significant_bits)
@@ -233,6 +237,10 @@ namespace comp
                 if(len <= 0)
                 {
                     len = 1;
+                }
+                if(len > 63)
+                {
+                    len = 63; //Clamping to 6-bit max
                 }
 
                 // Check if we can reuse precision

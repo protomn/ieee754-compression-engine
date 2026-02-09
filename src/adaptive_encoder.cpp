@@ -46,6 +46,10 @@ namespace comp
             {
                 len = 1;
             }
+            if(len > 63)
+            {
+                len = 63;
+            }
 
             // Adaptive check: is the previous window reusable?
             if(!first_del && lzs >= prev_lzs && (lzs + len) <= (prev_lzs + prev_len))

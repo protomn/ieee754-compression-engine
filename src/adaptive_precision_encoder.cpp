@@ -66,6 +66,7 @@ namespace comp
 
         int len = 64 - lzs - tzs;
         if(len <= 0) { len = 1; }
+        if(len > 63) { len = 63; }
 
         //Adaptive Decision logic: should we reuse precision?
         if(reusePrecision(lzs, len))
