@@ -26,7 +26,7 @@ namespace comp
 
             explicit Encoder(size_t buffer_size_)
                 : writer_(buffer_size_), prev_val(0),
-                  prev_lzs(31), prev_len(64), first_val(true), first_del(true) { }
+                  prev_lzs(31), prev_len(64), first_val(true) { }
 
             virtual void append(double val)
             {
@@ -105,7 +105,6 @@ namespace comp
             int prev_lzs; //track previous leading zeros
             int prev_len; //track previous meaningful length
             bool first_val;
-            bool first_del; //track if it's the first non-zero del
     };
 
     class AdaptiveEncoder : public Encoder

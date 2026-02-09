@@ -76,9 +76,9 @@ namespace comp
             bitReader reader_;
             uint64_t prev_val;
             int prev_lzs;
-            int prev_len;
+            [[maybe_unused]] int prev_len;
             bool first_val;
-            bool first_del;
+            [[maybe_unused]] bool first_del;
     };
 
     class AdaptiveDecoder : public Decoder
