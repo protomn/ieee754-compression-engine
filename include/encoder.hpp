@@ -11,19 +11,34 @@ namespace comp
     I used the same algorithm used by Facebook Gorilla (and InfluxDB, etc)
 
     The idea is as follows:
-        1. Calculate XOR: del = curr_val ^ prev_val
-        2. Case 0 (Same value): If del == 0, write a single bit 0.
-        3. Case 1 (Different value): Write bit 1
-            - Calculate the leading and trailing zeros of del
-            - If the lzs and tzs are close enough to the previous value's lzs and tzs.
-              we reuse the prev length and position.
-            - else we write a new control block specifying the new lz count and length.
-    */
+        1. Store the first value as raw 64-bits.
+        2. For subsequent values:
+            - Compute XOR delta: del = value ^ prev_value
+            - If del == 0: write a single control bit '0' (signals value hasn't changed)
+            - If del == 1: write '1' (signals value has changed), then encode leading/trailing zeros
+        
+    The encoding format for the changed values is:
+        - 1 bit: control bit (always 1)
+        - 5 bits: leading zeros count [0 - 31]
+        - 6 bits: meaningful bit length [1 - 63]
+        - N bits: meaningful bits (where N = bit length)
 
+    The encoder is optimized for time series data where subsequent values differ ever so slightly.
+    */
     class Encoder
     {
         public:
 
+            /*
+            Parameter buffer_size_ is the maximum number of values to be encoded, NOT the number of bytes.
+
+            The constructor internally allocates a buffer sized for the worst case
+            based on the number of elements to be encoded:
+                - First value: 64 bits
+                - Subsequent values: up to 1+5+6+62 = 76 bits per value
+
+            Recommended buffer_size_ * 128 for good safety margin.
+            */
             explicit Encoder(size_t buffer_size_)
                 : writer_(buffer_size_), prev_val(0),
                   prev_lzs(31), prev_len(64), first_val(true) { }
@@ -56,18 +71,23 @@ namespace comp
 
                     if(lzs >= 32)
                     {
-                        lzs = 31;
+                        lzs = 31; //Clamped to 31 bits because leading zeros are encoded in 5 bits (2^5 - 1 = 31)
                     }
 
                     int len{64 - lzs - tzs};
 
-                    if(len <= 0)
+                    if(len <= 0) //For when all bits are leading/trailing zeros
                     {
                         len = 1;
                     }
                     if(len > 63)
                     {
                         len = 63; //Clamping to 6-bit max;
+                        /*
+                        Why?
+                            This is because the length is encoded in 6 bits (max = 2^6 - 1 = 63)
+                            Without this len = 64 would truncate to 0, leading to UB in the decoder.
+                        */
                     }
 
                     writer_.write_bits(lzs, 5);
@@ -80,6 +100,11 @@ namespace comp
                 }
             }
 
+            /*
+            Finalize the compressed stream
+            Flushes any remaining bits in the scratch buffer to the main buffer
+            Must be called before accessing any compressed data!
+            */
             void fin()
             {
                 /*
