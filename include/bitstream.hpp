@@ -55,6 +55,14 @@ namespace comp
             explicit linBuffer(size_t cap) : size_(0), capacity_(cap)
             {
                 //Calc required bytes
+                /*
+                Safety check to protect from overflow in case cap is huge
+                */
+                if(cap > MAX_SIZE / sizeof(uint64_t))
+                {
+                    throw std::invalid_argument("linBuffer::linBuffer() - buffer capacity too large!");
+                }
+                
                 size_t reqdBytes = cap * sizeof(uint64_t);
 
                 if(reqdBytes % MAX_SIZE != 0)
