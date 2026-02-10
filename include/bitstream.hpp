@@ -58,11 +58,11 @@ namespace comp
                 /*
                 Safety check to protect from overflow in case cap is huge
                 */
-                if(cap > MAX_SIZE / sizeof(uint64_t))
+                if(cap > SIZE_MAX / sizeof(uint64_t))
                 {
                     throw std::invalid_argument("linBuffer::linBuffer() - buffer capacity too large!");
                 }
-                
+
                 size_t reqdBytes = cap * sizeof(uint64_t);
 
                 if(reqdBytes % MAX_SIZE != 0)
