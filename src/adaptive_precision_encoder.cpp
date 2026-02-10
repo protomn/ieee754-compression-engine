@@ -221,6 +221,9 @@ namespace comp
 
         for(int i{0}; i < count; ++i)
         {
+            /*
+            Look back i steps in the circular buffer (HISTORY must be a power of 2).
+            */
             int idx = (hist_idx - 1 - i - HISTORY) & (HISTORY - 1);
             sum += precision_history[idx];
         }
