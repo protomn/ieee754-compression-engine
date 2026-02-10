@@ -41,7 +41,13 @@ namespace comp
             */
             explicit Encoder(size_t buffer_size_)
                 : writer_(buffer_size_), prev_val(0),
-                  prev_lzs(31), prev_len(64), first_val(true) { }
+                  prev_lzs(31), prev_len(64), first_val(true)
+            {
+                if(buffer_size_ == 0)
+                {
+                    throw std::invalid_argument("Buffer size must be positive!");
+                }
+            }
 
             virtual void append(double val)
             {
