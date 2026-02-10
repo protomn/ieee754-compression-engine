@@ -52,7 +52,7 @@ namespace comp
             }
 
             // Adaptive check: is the previous window reusable?
-            if(!first_del && lzs >= prev_lzs && (lzs + len) <= (prev_lzs + prev_len))
+            if(!first_del && lzs >= prev_lzs && (lzs + len) <= (prev_lzs + prev_len)) //Curent window is contained within or equal to previous window
             {
                 /*
                 Reuse previous encoding window if current XOR fits within it
@@ -60,12 +60,13 @@ namespace comp
                 */
                 writer_.write_bits(0, 1); //Control bit 0
 
-                uint64_t meaningful_bits = del >> (64 - prev_lzs - prev_len); //Shift del to align with previous window
+                int trail = 64 - prev_lzs - prev_len;
+                uint64_t meaningful_bits = (del >> trail) & ((1ULL  << prev_len) - 1); //Shift del to align with previous window
                 writer_.write_bits(meaningful_bits, prev_len);
             }
             else
             {
-                // New window
+                // New window is needed (write '1' control bit + header)
                 writer_.write_bits(1, 1); // Control bit 1
                 writer_.write_bits(lzs, 5);
                 writer_.write_bits(len, 6);
