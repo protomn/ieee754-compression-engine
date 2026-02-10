@@ -31,6 +31,7 @@ namespace comp
         {
             precision_history.fill(0);
             lzs_history.fill(0);
+            static_assert((HISTORY & (HISTORY - 1)) == 0, "HISTORY must be a power of 2!");
         }
 
 
