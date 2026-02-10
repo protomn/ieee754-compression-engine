@@ -30,7 +30,7 @@ void runBenchmark(const std::string &name, comp::Decoder &decoder, int count)
     auto end = std::chrono::high_resolution_clock::now();
     auto time_len = std::chrono::duration_cast<std::chrono::microseconds>(end - start).count();
 
-    if(checksum == 42.0001) { std::cout << " "; }
+    if(checksum < 0.0) { std::cout << ""; } // Prevent compiler from optimizing away the loop
 
     double throughput = (count / (time_len / 1e6)) / 1e6;
     std::cout << name << " throughtput: " << throughput << " M ticks/sec.\n";
