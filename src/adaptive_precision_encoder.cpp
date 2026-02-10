@@ -30,8 +30,7 @@ namespace comp
           precision_changes(0)
         {
             precision_history.fill(0);
-            lzs_history.fill(0);
-            static_assert((HISTORY & (HISTORY - 1)) == 0, "HISTORY must be a power of 2!");
+            lzs_history.fill(0);  
         }
 
 
@@ -104,12 +103,17 @@ namespace comp
         prev_val = u64_val;
     }
 
+    /*
+    Updates the circular buffer with latest precision values
+    Recomputes stats every 4 updates to amortize cost.
+    */
     void AdaptivePrecisionEncoder::updateHistory(int lzs, int len)
     {
         //Add to a circular buffer
         precision_history[hist_idx] = len;
         lzs_history[hist_idx] = lzs;
 
+        //Fast modulo using bitwise AND (HISTORY must be a power of 2)
         hist_idx = (hist_idx + 1) & (HISTORY - 1);
 
         if(hist_count < HISTORY)
@@ -117,7 +121,7 @@ namespace comp
             hist_count++;
         }
 
-        if(hist_count % 4 == 0)
+        if(hist_count % 4 == 0) //Amortize stats computation
         {
             recomputeStats();
         }
@@ -130,10 +134,10 @@ namespace comp
             return;
         }
 
-        //Compute av precision
+        //Compute av precision and range
         int sum{0};
-        int min_p{64};
-        int max_p{0};
+        int min_p{64}; //Start with maximum possible precision
+        int max_p{0}; //Start with minimum possible precision
 
         for(int i{0}; i < hist_count; ++i)
         {
@@ -148,6 +152,9 @@ namespace comp
         max_recent_pr = max_p;
 
         //Compute vol
+        /*
+        High volatility suggest precision is unstable, and frequetly requires new headers.
+        */
         int range = max_p - min_p;
         precision_vol = av_precision > 0 ? (range * 100) / av_precision : 0;
 
@@ -166,7 +173,7 @@ namespace comp
             isStable = false;
         }
 
-        //Doesn't flip on borderline values
+        //Doesn't flip on borderline values (hysteresis)
     }
 
     bool AdaptivePrecisionEncoder::reusePrecision(int lzs, int len) const
@@ -209,6 +216,10 @@ namespace comp
         return false; //In volatile regime
     }
 
+    /*
+    Predict next precision level using moving average
+    Used in stable regimes to anticipate precision needs
+    */
     int AdaptivePrecisionEncoder::predictPrecision() const
     {
         if(hist_count < 3)

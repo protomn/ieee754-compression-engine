@@ -18,6 +18,11 @@ namespace comp
         - Track which mantissa bits actually change between values.
         - Only encode the changing portion.
         - Use run-length encoding for precision levels.
+
+    Encoding format:
+        - If value remains unchanged: 1 bit '0'
+        - If precision is reused: 2 bits '10' + N bits (meaningful bits)
+        - If new precision: 2 bits '11' + 5 bits lzs + 6 bits len + N bits
     */
 
     class PrecisionEncoder
@@ -76,12 +81,21 @@ namespace comp
                         len = 63;
                     }
 
-                    //Check if the same precision level can be reused
+                    /*
+                    Check if the same precision level can be reused
+                    Reuse condition: 
+                        - current_lzs >= prev_lzs (at least as many leading zeros)
+                        - current_len <= significant_bits (fits within tracked precision)
+
+                    This saves 11 bits when precision is stable.
+                    */
+
                     if(lzs >= prev_lzs && len <= significant_bits)
                     {
                         //Reuse precision
                         writer_.write_bits(0, 1);
-
+                    
+                        //Calculate trailing zeros based on previous decision window
                         int trail = 64 - prev_lzs - significant_bits;
                         uint64_t meaningful_bits = (del >> trail) & ((1ULL << significant_bits) - 1);
                         writer_.write_bits(meaningful_bits, significant_bits);
@@ -97,6 +111,7 @@ namespace comp
                         uint64_t meaningful_bits = (del >> tzs) & ((1ULL << len) - 1);
                         writer_.write_bits(meaningful_bits, len);
 
+                        //Update tracked precision for next value
                         prev_lzs = lzs;
                         significant_bits = len;
                     }
@@ -155,8 +170,13 @@ namespace comp
 
         private:
             
-            static constexpr int HISTORY = 16;
+            static constexpr int HISTORY = 16; //Sliding window size for precision history
+            /*
+            Tolerance: allow precision to increase by these many bits before forcing a new header
+            Tradeoff: minor over-encoding for reduced header overhead.
+            */
             static constexpr int TOL = 2;
+            static_assert((HISTORY & (HISTORY - 1)) == 0, "History must be a power of 2!");
 
             //History tracking
             std::array<int, HISTORY> precision_history;
