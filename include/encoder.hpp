@@ -130,6 +130,7 @@ namespace comp
             int prev_lzs; //track previous leading zeros
             int prev_len; //track previous meaningful length
             bool first_val;
+            [[maybe_unused]] bool first_del;
     };
 
     class AdaptiveEncoder : public Encoder

@@ -114,7 +114,6 @@ namespace comp
                     out = to_double(prev_val);
                     return true;
                 }
-                
                 //Value changed
                 uint64_t header = reader_.read_bits(11);
                 int lead = (int)((header >> 6) & 0x1F);

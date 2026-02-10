@@ -54,7 +54,10 @@ namespace comp
             // Adaptive check: is the previous window reusable?
             if(!first_del && lzs >= prev_lzs && (lzs + len) <= (prev_lzs + prev_len))
             {
-                //Reuse prev window
+                /*
+                Reuse previous encoding window if current XOR fits within it
+                Saves 11 bits (5 lzs + 6 len) by writing only the control bit.
+                */
                 writer_.write_bits(0, 1); //Control bit 0
 
                 uint64_t meaningful_bits = del >> (64 - prev_lzs - prev_len); //Shift del to align with previous window
