@@ -92,6 +92,7 @@ Format:
                    [5 bits: leading zeros count (0-31)]
                    [6 bits: meaningful length (1-63)]
                    [N bits: meaningful bits]
+```
 
 **Encoding Process:**
 1. Store first value as raw 64 bits
@@ -293,11 +294,11 @@ Validated with:
 - Edge case coverage (identical values, drift, alternating patterns, boundary conditions)
 - Full lossless verification (1e-9 tolerance)
 
-Stress test:
-100M financial tick dataset (800MB raw)
-All encoder/decoder pairs verified lossless.
+### Stress Test
 
-#### Stress Test ([tests/stress_test.cpp](tests/stress_test.cpp) - 431 lines)
+100M financial tick dataset (800MB raw) - all encoder/decoder pairs verified lossless.
+
+**Implementation:** [tests/stress_test.cpp](tests/stress_test.cpp) (431 lines)
 
 **Actual Test Output (100M ticks):**
 ```
