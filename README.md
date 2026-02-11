@@ -1,6 +1,14 @@
 # IEEE754 Compression Engine
 
-A high-performance, lossless compression library for IEEE754 double-precision floating-point numbers, optimized for financial time-series data.
+A low-latency, bit-level compression engine for IEEE-754 double-precision time-series data.
+
+Implements Gorilla-style XOR delta encoding with window reuse and adaptive mantissa precision tracking.
+
+Benchmarked on 100M financial ticks (800MB raw):
+- 3.26–3.36× compression
+- 200–275M values/sec encoding
+- 170–270M values/sec decoding
+- Apple M2, clang -O3 -march=native
 
 ## Quick Start
 
@@ -35,7 +43,7 @@ This library implements multiple variants of delta-XOR compression algorithms in
 - **Cache-optimized memory layout** (64-byte alignment)
 - **Hardware-accelerated** bit manipulation (CLZ/CTZ instructions)
 - **Comprehensive test suite** with real-world stress testing (100M ticks validated)
-- **Production-tested** on 100M financial tick dataset with 65.2% identical values, 11.4% small changes
+- **Validated** on 100M synthetic financial tick dataset with 65.2% identical values, 11.4% small changes
 
 ---
 
@@ -84,7 +92,6 @@ Format:
                    [5 bits: leading zeros count (0-31)]
                    [6 bits: meaningful length (1-63)]
                    [N bits: meaningful bits]
-```
 
 **Encoding Process:**
 1. Store first value as raw 64 bits
@@ -275,113 +282,22 @@ CXXFLAGS := -std=c++20 -O3 -march=native -Wall -Wextra -Wpedantic
 - `-march=native`: CPU-specific optimizations (SIMD, hardware bit instructions)
 - `-Wall -Wextra -Wpedantic`: Strict warning levels
 
-**Output:**
-- Object files: `build/*.o`
-- Executables: `bin/*` (15 test and benchmark binaries)
-
 ---
 
 ## Testing Infrastructure
 
-### Test Hierarchy
+Validated with:
 
-#### Preliminary Tests ([tests/prelim-tests/](tests/prelim-tests/))
-Unit tests for individual components:
-- `ieee754-test.cpp` - Bit manipulation verification
-- `bitstream-test.cpp` - Buffer and bit I/O correctness
-- `encoder-test.cpp` - Basic encoding functionality
-- `decoder-test.cpp` - Basic decoding functionality
+- 24 total encoder/decoder correctness tests
+- 10M–100M value stress tests
+- Edge case coverage (identical values, drift, alternating patterns, boundary conditions)
+- Full lossless verification (1e-9 tolerance)
 
-#### Core Correctness Tests
-
-**[correctness-test.cpp](tests/correctness-test.cpp)**
-- Tests all encoder/decoder pairs with 20 synthetic values
-- Lossless verification (tolerance: `1e-9`)
-- Compression ratio reporting
-
-**[adaptive_integrity_test.cpp](tests/adaptive_integrity_test.cpp)**
-- Validates adaptive window reuse logic on 1M values
-- Edge case testing (boundary conditions)
-- **Result:** All 1,000,000 ticks encoded and decoded successfully without loss ✓
-
-**[precision_encoder_test.cpp](tests/precision_encoder_test.cpp)** (600+ lines)
-
-Comprehensive test suite with **12 test cases**, all passing:
-- Basic encoding/decoding (5 values)
-- Identical value compression (10,000 values)
-- Small change test (100 values)
-- Large change test (50 values)
-- Alternative value encoding (100 values)
-- Gradual drift encoding (1,000 values)
-- Precision boundary encoding (20 values)
-- Adaptive vs Base encoder comparison (1,000 values)
-- Base vs Fast encoder comparison (1,000 values)
-- All 3 encoder size comparison (500 values)
-- Edge case encoding (10 values)
-- Large dataset encoding (**10M values**)
-
-**Test Results:**
-```
-Total Tests: 12
-Passed: 12 ✓
-Failed: 0
-Total values tested: 10,013,785
-Execution time: 84,099 μs (~84ms)
-```
-
-**[precision_decoder_test.cpp](tests/precision_decoder_test.cpp)**
-
-Mirror test suite with **12 test cases**, all passing:
-- Basic decoder test (5 values)
-- Identical value decompression (1,000 values)
-- Small changes decoding (100 values)
-- Large changes decoding (50 values)
-- Alternating values decoding (50 values)
-- Gradual drift decoding (1,000 values)
-- Precision boundary decoding (20 values)
-- Adaptive decoder correctness (1,000 values)
-- Fast decoder correctness (500,000 values)
-- All 3 decoder comparison (500 values)
-- Edge case decoding (10 values)
-- Large dataset decoding (**10M values**)
-
-**Test Results:**
-```
-Total Tests: 12
-Passed: 12 ✓
-Failed: 0
-Total values tested: 10,503,735
-```
+Stress test:
+100M financial tick dataset (800MB raw)
+All encoder/decoder pairs verified lossless.
 
 #### Stress Test ([tests/stress_test.cpp](tests/stress_test.cpp) - 431 lines)
-
-**Real-world validation with large datasets:**
-
-**Features:**
-- Fast CSV parsing using `fast_float.h` library
-- Handles two formats:
-  - Single column: `price`
-  - Two columns: `timestamp,price`
-- Data analysis: statistics, change patterns, distribution
-- Correctness verification across all encoder/decoder pairs:
-  - Basic Encoder/Decoder
-  - Adaptive Encoder/Decoder
-  - Fast Encoder/Decoder
-  - Precision Encoder/Decoder
-  - Adaptive Precision Encoder/Decoder
-  - Fast Precision Encoder/Decoder
-- Performance benchmarking (3 runs, median timing)
-- Metrics: throughput (M values/sec), compressed size, compression ratio, space saved
-
-**Test Data:**
-- 3.2 GB CSV file (`data/market_data.csv`)
-- 100M+ financial tick data points
-- Generated via [python/fetch_data.py](python/fetch_data.py) (supports Yahoo Finance API and realistic market microstructure simulation)
-
-**Run Stress Test:**
-```bash
-./bin/stress_test data/market_data.csv
-```
 
 **Actual Test Output (100M ticks):**
 ```
@@ -554,48 +470,17 @@ int main() {
 }
 ```
 
-### Compression Algorithm Selection Guide
-
-| Use Case | Recommended Algorithm | Performance (100M ticks) | Rationale |
-|----------|----------------------|--------------------------|-----------|
-| Maximum throughput | `FastPrecisionEncoder` / `FastPrecisionDecoder` | **274 M/s encode, 271 M/s decode** | Best overall: high speed + good compression (3.26:1) |
-| Fastest encoding | `FastEncoder` / `FastDecoder` | **268 M/s encode, 255 M/s decode** | Pure speed optimization, 3.36:1 ratio |
-| Best compression | `BasicEncoder` | 228 M/s encode, **3.36:1 ratio, 70.2% saved** | Highest compression ratio |
-| Balanced performance | `AdaptiveEncoder` / `AdaptiveDecoder` | 214 M/s encode, 194 M/s decode, 3.26:1 | Window reuse optimization |
-| Simple implementation | `Encoder` / `Decoder` | 228 M/s encode, 171 M/s decode | Base Gorilla algorithm, proven reliability |
-| Financial tick data | `PrecisionEncoder` / `PrecisionDecoder` | 216 M/s encode, 196 M/s decode | Mantissa-level precision tracking |
-| Production use | `FastPrecisionEncoder` | **274 M/s + 69.3% compression** | Best speed/compression trade-off |
-
-**Recommendation for most use cases:** `FastPrecisionEncoder` / `FastPrecisionDecoder` offers the best balance with throughput and excellent compression.
 
 ---
 
 ## Data Generation
 
-### Python Script ([python/fetch_data.py](python/fetch_data.py))
+Includes Python script for:
 
-Generates test data for stress testing with two modes:
+- Yahoo Finance data fetch
+- Realistic microstructure simulation (random walk + discrete tick noise)
 
-**1. Real Market Data:**
-```python
-# Fetches data from Yahoo Finance API (requires yfinance library)
-python fetch_data.py --source yahoo --symbol AAPL 
-```
-
-**2. Simulated Market Data:**
-```python
-# Generates realistic market microstructure simulation
-python fetch_data.py --source simulate --ticks 100000000 --volatility 0.02
-```
-
-**Simulation Features:**
-- Random walk with drift
-- Discrete tick noise (minimum price increment)
-- Bid-ask spread simulation
-- Configurable volatility
-- Realistic price clustering
-
-**Output:** CSV file compatible with stress test parser
+Used to generate 100M tick dataset for benchmarking.
 
 ---
 
@@ -632,51 +517,6 @@ make clean && make
 ./bin/precision_decoder_test && \
 ./bin/stress_test data/market_data.csv
 ```
-
-### Benchmark Results Summary
-
-**Adaptive Encoder Benchmark (10M values):**
-```
-Throughput: 249.14 M values/sec
-Raw Size: 76.29 MB
-Compressed Size: 12.03 MB
-Compression Ratio: 6.34x
-```
-
-**Fast Encoder Benchmark (10M values):**
-```
-Throughput: 608.57 M values/sec  (Fast Encoder)
-Throughput: 363.66 M values/sec  (Adaptive variant)
-Throughput: 418.24 M values/sec  (Precision variant)
-```
-
-**Adaptive Precision Analysis (50 values, alternating pattern):**
-```
-Compression Comparison:
-Metric                    Base Precision  Adaptive Precision  Improvement
-Compressed Size (bytes)   27,752          27,752              0.00%
-Compression Ratio         34.69:1         34.69:1             -
-
-Statistics:
-Average Precision         52 bits
-Precision Volatility      0%
-Precision Reuse Rate      40.0%
-
-Note: Both encoders produce identical compressed size on this dataset,
-demonstrating that adaptive precision successfully matches base precision
-performance while maintaining potential for better compression on
-volatile data patterns.
-```
-
-### Performance Metrics
-
-Benchmarks measure:
-- **Throughput:** Million values per second (M/s)
-- **Compressed size:** Bytes
-- **Compression ratio:** X:1
-- **Space saved:** Percentage
-- **Median timing:** Over multiple runs (reduces measurement noise)
-- **Precision statistics:** Average bits, volatility, reuse rates
 
 ---
 
@@ -780,102 +620,24 @@ double decoded = to_double(reconstructed);
 
 ---
 
-## Design Patterns
-
-### Template Method Pattern
-Base encoder/decoder classes define the skeleton algorithm:
-```cpp
-class Encoder {
-public:
-    virtual void append(double val);  // Template method
-protected:
-    bitWriter writer_;  // Common infrastructure
-    uint64_t prev_val;
-};
-
-class AdaptiveEncoder : public Encoder {
-public:
-    void append(double val) override;  // Specialized implementation
-};
-```
-
-### Strategy Pattern
-Different encoding strategies (Base, Adaptive, Fast, Precision) are interchangeable at compile-time or runtime depending on performance requirements.
-
-### Policy-Based Design
-Fast variants use compile-time polymorphism:
-```cpp
-class FastEncoder {
-    // Non-virtual method for zero vtable overhead
-    __attribute__((always_inline))
-    inline void fastAppend(double val);
-};
-```
-
-### RAII (Resource Acquisition Is Initialization)
-Automatic resource management:
-```cpp
-class linBuffer {
-    void* data_;
-    size_t capacity_;
-
-    ~linBuffer() {
-        if (data_) std::free(data_);  // Automatic cleanup
-    }
-
-    // Prevent accidental copies
-    linBuffer(const linBuffer&) = delete;
-    linBuffer& operator=(const linBuffer&) = delete;
-
-    // Allow moves
-    linBuffer(linBuffer&& other) noexcept;
-    linBuffer& operator=(linBuffer&& other) noexcept;
-};
-```
-
----
-
 ## Algorithm Analysis
 
 ### Theoretical Compression Bounds
 
 **Best Case:** Identical consecutive values
-```
-Compression ratio: 64:1 (1 bit per value)
-Space saved: 98.4%
-```
 
 **Average Case:** Financial tick data with small consecutive changes
-```
-Bits per value: 15-35 bits
-Compression ratio: 2-4:1
-Space saved: 50-75%
-```
 
 **Worst Case:** Random uncorrelated values
-```
-Bits per value: 50-76 bits
-Compression ratio: 0.8-1.3:1
-Space saved: -20% to 23% (may expand)
-```
+
 
 ### Complexity Analysis
 
 **Encoding Time Complexity:** `O(n)` where `n` = number of values
-- Each value processed exactly once
-- Constant-time operations: XOR, bit counting, bit writing
 
 **Decoding Time Complexity:** `O(n)`
-- Linear scan through compressed buffer
-- Constant-time operations: bit reading, XOR reconstruction
 
 **Space Complexity:** `O(n)` for buffer storage
-- Encoder buffer: worst-case `76n` bits
-- Decoder: `O(1)` working memory (stateful reading)
-
-**Adaptive Precision Encoder:**
-- Additional `O(HISTORY)` space for sliding window (HISTORY = 16)
-- Amortized `O(1)` time per value (statistics computed every 4th update)
 
 ---
 
@@ -894,31 +656,5 @@ Space saved: -20% to 23% (may expand)
 ### IEEE754 Specification
 - **IEEE Standard 754-2019:** IEEE Standard for Floating-Point Arithmetic
 - [Wikipedia](https://en.wikipedia.org/wiki/Double-precision_floating-point_format)
-
----
-
-## Acknowledgments
-
-- Facebook Gorilla team for pioneering XOR delta compression
-- C++20 standardization committee for modern bit manipulation utilities
-- `fast_float` library authors for high-performance CSV parsing
-
----
-
-## Repository Statistics
-
-- **Total Lines of Code:** 1,674 (headers + source, excluding external libraries)
-- **Test Coverage:** 15+ test executables
-- **Test Results:** 24/24 tests passing (100% pass rate)
-  - 12/12 encoder tests ✓ (10,013,785 values tested)
-  - 12/12 decoder tests ✓ (10,503,735 values tested)
-- **Stress Test Dataset:** 3.2 GB CSV (100,000,000 financial ticks)
-- **Validated Compression:** 3.26-3.36:1 ratio, 69-70% space savings
-- **Validated Throughput:** 200-275 M/s encoding, 170-270 M/s decoding
-- **Supported Platforms:** Linux, macOS (ARM64/x86-64), Windows
-- **Compiler Compatibility:** GCC 11+, Clang 13+, Apple Clang 17+
-- **Benchmark Hardware:** Apple Silicon (ARM64) with `-march=native -O3`
-
-**Production Ready:** All correctness and performance tests validated
 
 **Last Updated:** February 2026
