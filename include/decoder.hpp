@@ -1,4 +1,3 @@
-#include <iostream>
 #include "ieee754.hpp"
 #include "bitstream.hpp"
 
