@@ -154,7 +154,7 @@ void analyze_data(const std::vector<double> &data_)
     std::cout << "Medium changes (<=$0.05): " << med_change
               << " (" << 100.0 * med_change / (n-1) << "%)\n";
 
-    std::cout << "  Maximum change: $" << std::setprecision(4) 
+    std::cout << "Maximum change: $" << std::setprecision(4) 
               << max_change << '\n';
 }
 
