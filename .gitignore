@@ -65,3 +65,5 @@ conda-meta/
 .coverage
 .coverage.*
 htmlcov/
+
+data/
