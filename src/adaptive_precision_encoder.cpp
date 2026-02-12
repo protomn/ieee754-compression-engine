@@ -73,7 +73,8 @@ namespace comp
         {
             writer_.write_bits(0, 1);
 
-            uint64_t meaningful_bits = (del >> (64 - prev_lzs - significant_bits)) & ((1ULL << significant_bits) - 1);
+            int trail = 64 - prev_lzs - significant_bits;
+            uint64_t meaningful_bits = (del >> trail) & ((1ULL << significant_bits) - 1);
             writer_.write_bits(meaningful_bits, significant_bits);
 
             precision_reuses++;

@@ -56,7 +56,7 @@ int main()
         }
 
         //Bit level comparison via uint64 casts to avoid rounding quirks
-        if(comp::to_uint64(decoded) != comp::to_uint64(decoded))
+        if(comp::to_uint64(decoded) != comp::to_uint64(data[j]))
         {
             if(error < 5)
             {

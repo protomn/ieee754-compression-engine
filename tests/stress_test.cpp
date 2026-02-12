@@ -402,7 +402,7 @@ int main(int argc, char *argv[])
         benchmarkEnc<comp::Encoder>(data, "Basic Encoder");
         benchmarkEnc<comp::AdaptiveEncoder>(data, "Adaptive Encoder");
         benchmarkEnc<comp::FastEncoder>(data, "Fast Encoder");
-        benchmarkEnc<comp::PrecisionEncoder>(data, "Adaptive Encoder");
+        benchmarkEnc<comp::PrecisionEncoder>(data, "Precision Encoder");
         benchmarkEnc<comp::AdaptivePrecisionEncoder>(data, "Adaptive Precision Encoder");
         benchmarkEnc<comp::FastPrecisionEncoder>(data, "Fast Precision Encoder");
 
