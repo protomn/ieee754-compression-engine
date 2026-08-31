@@ -14,7 +14,9 @@ obj/
 CMakeFiles/
 CMakeCache.txt
 cmake_install.cmake
-Makefile
+# NOTE: do not ignore a bare 'Makefile' here. This project's build is a
+# hand-written root Makefile, and ignoring the name kept it out of the
+# repository entirely, leaving the published sources with no build system.
 compile_commands.json
 
 results/*.csv

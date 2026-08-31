@@ -5,7 +5,7 @@
 #include "encoder.hpp"
 #include "decoder.hpp"
 
-void correctnessTest()
+bool correctnessTest()
 {
     const int TEST_SIZE = 20;
     std::vector<double> test;
@@ -170,15 +170,14 @@ void correctnessTest()
     if(all_pass && errors_basic == 0 && errors_adaptive == 0 && errors_fast == 0)
     {
         std::cout << "ALL TESTS PASSED!\n";
+        return true;
     }
-    else
-    {
-        std::cout << "TESTS FAILED!\n";
-    }
+
+    std::cout << "TESTS FAILED!\n";
+    return false;
 }
 
 int main()
 {
-    correctnessTest();
-    return 0;
+    return correctnessTest() ? 0 : 1;
 }

@@ -1,0 +1,10 @@
+.git
+.github
+data
+python
+ipynb
+bin
+build
+results
+.DS_Store
+*.log

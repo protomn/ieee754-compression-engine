@@ -1,0 +1,70 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: linux-gcc-14
+            os: ubuntu-latest
+            cxx: g++-14
+            apt: g++-14
+          - name: linux-clang-18
+            os: ubuntu-latest
+            cxx: clang++-18
+            apt: clang-18
+          - name: macos-appleclang
+            os: macos-latest
+            cxx: clang++
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install toolchain
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends ${{ matrix.apt }}
+
+      # ARCHFLAGS is deliberately emptied. The local default is -march=native,
+      # which tunes the binary to whichever CPU the runner happens to allocate
+      # and makes builds unreproducible across runs.
+      - name: Build
+        run: make -j"$(getconf _NPROCESSORS_ONLN)" CXX=${{ matrix.cxx }} ARCHFLAGS=
+
+      - name: Test
+        run: make test CXX=${{ matrix.cxx }} ARCHFLAGS=
+
+      # stress_test reads a price CSV. The real dataset is 3.2 GB and is not in
+      # the repository, so CI exercises the same code path against a small
+      # deterministic synthetic series.
+      - name: Generate synthetic dataset
+        run: |
+          python3 - <<'PY'
+          import random
+          random.seed(7)
+          price = 100.0
+          rows = ["timestamp,price"]
+          for i in range(200_000):
+              rows.append(f"2024-01-01T00:{i // 60:02d}:{i % 60:02d},{price:.6f}")
+              price *= 1 + random.gauss(0, 0.0004)
+          with open("synthetic.csv", "w") as handle:
+              handle.write("\n".join(rows))
+          PY
+
+      - name: Stress test
+        run: make test-stress DATA=synthetic.csv CXX=${{ matrix.cxx }} ARCHFLAGS=
